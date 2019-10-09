@@ -63,13 +63,22 @@ app.set('PORT', PORT);
 
           const options = {
             url: 'https://sec.meetkaruna.com/api/v1/conversations/' + json.data[index].uuid,
-            method: 'GET', // method depends on server sccess
+            method: 'GET'
             };
             request(options, function(error, response, theBody) {
             if(error) throw error;
             var jsonResponse = JSON.parse(theBody);
             jsonResponse.data[index].messages.push(JSON.stringify(message));
-            // .... uploading on server where JSON resides... all code not present
+
+            const optionsPost = {
+              urlPost: 'https://sec.meetkaruna.com/api/v1/conversations/' + json.data[index].uuid,
+              method: 'POST'
+            };
+            request(optionsPost, function(errors, reply, dBody){
+              if(errors) throw errors;
+              jsonResponse.data[index].messages.push(JSON.stringify(message));
+            });
+
             for(var i in jsonResponse.data[index].messages){
               socket.emit('all messages', json.data[index].messages[i]);
             }
@@ -88,8 +97,16 @@ app.set('PORT', PORT);
         conversation.unread = 1;
         conversation.last_message = message;
         console.log('conversation: ', conversation);
-        // uploading on server where JSON resides...all code not present
-        jsonResponse.data.push(JSON.stringify(conversation));
+
+        const optionsPostConver = {
+          urlPost: 'https://sec.meetkaruna.com/api/v1/conversations/',
+          method: 'POST'
+        };
+        request(optionsPostConver, function(errors, reply, dBody){
+          if(errors) throw errors;
+          json.data.push(JSON.stringify(conversation));
+        });
+
       }
       });
 
