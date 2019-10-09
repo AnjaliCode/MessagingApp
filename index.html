@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Chat IO</title>
+    <link rel='stylesheet' type="text/html" href="/stylesheets/bootstrap.css"/>
+    <link rel='stylesheet' type="text/html" href="/stylesheets/style.css"/>
+    <style>
+      .container, .userWrapper, .empty {
+        margin: 25px 25px 25px 100px;
+      }
+      #message, #username {
+        margin: auto;
+        height: 25px;
+      }
+      #message {
+        width: 100%;
+      }
+      #username{
+        width: 150px;
+      }
+      .display{
+        border: 1px solid grey;
+        margin-top: 100px;
+        margin-left: 70px;
+        height: 400px;
+        width: 450px;
+        overflow: auto;
+      }
+    </style>
+    <script src='https://code.jquery.com/jquery-3.4.1.min.js'></script>
+    <script src='/socket.io/socket.io.js'></script>
+  </head>
+  <body>
+    <div class='display'></div>
+
+    <form class='userWrapper'>
+    <div class="form-row">
+      <div class="col-10">
+        <input id="username" type="text" class="form-control" placeholder="Enter your name here"/>
+        &nbsp; &nbsp;
+        <input id="submitUser" type="submit" class="form-control alert alert-primary" value="Send Name"/>
+      </div>
+    </div>
+    </form>
+
+    <form class='container'>
+    <div class="form-row">
+      <div class="col-10">
+        <input id="message" type="text" class="form-control" placeholder="Enter a mesage...."/>
+        <br><br>
+        <input id="submit" type="submit" class="form-control alert alert-primary" value="Send Message"/>
+      </div>
+    </div>
+    </form>
+    <form class='empty'>
+      <input id="empty" type="submit" class="form-control alert alert-primary" value="Empty Messages"/>
+    </form>
+
+    <script>
+      $(document).ready(function(){
+        console.log("jQuery working....");
+        $('.userWrapper').show();
+        $('.container').hide();
+        var socket = io();
+          $('.userWrapper').submit(function(event){
+            event.preventDefault();
+            var $username = $('#username').val();
+            socket.emit('send username', $username);
+            $('#username').val('');
+            // all messages and conversation meta on socket methods
+            socket.on('allMessages', function(sortedMessages){
+              console.log('allMessages: ', sortedMessages);
+                sortedMessages.forEach(function(element, index){
+                  $('.display').append('<br>',element.direction.toString());
+                  var date = new Date(element.created_at);
+                  $('.display').append('&nbsp; &nbsp;',date.toString());
+                  if(element.direction == "incoming")
+                  var body = "<div style='color: blue;'> " + element.body.toString() + " </div>";
+                  if(element.direction == "outgoing")
+                  var body = "<div style='color: green;'> " + element.body.toString() + " </div>";
+                  $('.display').append('<br>',body, '<br>');
+                });
+            });
+            var reply = localStorage.getItem("botReply");
+            var body = "<div style='color: green;'>" + reply + "</div>";
+            $('.display').append(body);
+
+            socket.on('conversation meta', function(meta){
+              console.log('meta: ', meta);
+              $('.display').append('<hr>');
+              $('.display').append(' User: ', meta.name.toString(),'<br>');
+              $('.display').append(' unread: ', meta.unread.toString(), '<br>');
+              $('.display').append(' last conversation: ','<br>');
+              var object = meta.last_message;
+              var body = object.body;
+              var direction = object.direction;
+              var created_at = new Date(object.created_at);
+              $('.display').append(direction, '&nbsp; &nbsp;', created_at);
+              var body = "<div style='color:brown'>" + body + "</div>";
+              $('.display').append('<br>', body, '<hr>');
+            });
+            $('.userWrapper').hide();
+            $('.container').show();
+          });
+
+          $('.container').submit(function(event){
+            event.preventDefault();
+            var $message = $('#message').val();
+            // upload to server and get message from server
+            var message = "<div style='color:blue'>" + $message + "</div>";
+            $('.display').append('<br>',message);
+            socket.emit('send to server', $message);
+            $('#message').val('');
+          });
+
+          $('#empty').submit(function(event){
+            event.preventDefault();
+            $('.display').empty();
+            socket.emit('disconnect');
+          });
+
+          socket.on('send to client', function(info){
+            localStorage.setItem('botReply', info);
+            var info = "<span style='color:green'>" + info + "</span>";
+            $('.display').append('bot: ', info);
+          });
+          socket.emit('disconnect');
+      });
+    </script>
+  </body>
+</html>
